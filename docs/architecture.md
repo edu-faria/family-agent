@@ -220,7 +220,7 @@ src/family_agent/
   main.py                  boot & wiring
   config.py                config.toml + env overrides
   types.py                 InboundMessage, OutboundMessage, TurnResult, PendingAction
-  gateway/                 telegram_bot.py, access.py (allowlist, rate limit)
+  gateway/                 telegram_bot.py, access.py (allowlist, rate limit), formatting.py (Markdown→Telegram HTML)
   conversation/manager.py  orchestration + locking + confirmation state machine
   agent/
     router.py              cheap classifier

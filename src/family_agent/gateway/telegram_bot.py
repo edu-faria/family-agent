@@ -26,6 +26,7 @@ from telegram.ext import (
 from family_agent.config import Settings
 from family_agent.conversation import ConversationManager
 from family_agent.gateway.access import Allowlist, RateLimiter
+from family_agent.gateway.formatting import md_to_telegram_html
 from family_agent.logging_setup import get_logger
 from family_agent.types import InboundMessage, OutboundMessage
 
@@ -108,4 +109,9 @@ class TelegramGateway:
                 markup = InlineKeyboardMarkup(
                     [[InlineKeyboardButton(label, callback_data=data)] for label, data in out.buttons]
                 )
-            await self.app.bot.send_message(chat_id=out.chat_id, text=out.text, reply_markup=markup)
+            await self.app.bot.send_message(
+                chat_id=out.chat_id,
+                text=md_to_telegram_html(out.text),
+                reply_markup=markup,
+                parse_mode="HTML",
+            )

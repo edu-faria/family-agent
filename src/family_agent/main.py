@@ -11,7 +11,7 @@ from family_agent.agent.router import Router
 from family_agent.capabilities import load_capabilities, migration_dirs
 from family_agent.config import load_settings
 from family_agent.conversation import ConversationManager
-from family_agent.gateway import TelegramGateway
+from family_agent.gateway.telegram_bot import TelegramGateway
 from family_agent.logging_setup import configure_logging, get_logger
 from family_agent.persistence.db import Database
 from family_agent.persistence.migrations import run_migrations
