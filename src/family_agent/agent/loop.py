@@ -157,6 +157,9 @@ class Executor:
 
 
 def _assistant_blocks(reply) -> list[dict]:
+    # Prefer the provider's native blocks so thinking blocks are echoed back intact.
+    if reply.raw_blocks:
+        return reply.raw_blocks
     blocks: list[dict] = []
     if reply.text:
         blocks.append({"type": "text", "text": reply.text})

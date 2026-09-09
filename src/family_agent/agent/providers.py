@@ -32,6 +32,24 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     return input_tokens / 1_000_000 * inp + output_tokens / 1_000_000 * out
 
 
+# Tool/function names on both APIs must match ^[a-zA-Z0-9_-]+$. Our internal names
+# are namespaced with dots ("calendar.add_appointment"), so swap dot<->hyphen at
+# the wire boundary. Reversible because our names are otherwise [a-z_] only.
+def _wire_name(name: str) -> str:
+    return name.replace(".", "-")
+
+
+def _local_name(name: str) -> str:
+    return name.replace("-", ".")
+
+
+# Adaptive thinking is only accepted on the 4.6+/5-series reasoning models.
+# Haiku 4.5 and older models reject `thinking: {type: "adaptive"}` with a 400.
+def _supports_adaptive_thinking(model: str) -> bool:
+    m = model.lower()
+    return "haiku" not in m and not m.startswith("claude-3")
+
+
 @dataclass
 class ToolCall:
     id: str
@@ -47,6 +65,9 @@ class ModelReply:
     model: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
+    # Provider-native assistant content blocks (Anthropic). Echo these back verbatim
+    # on the next turn so thinking blocks are preserved. Empty for OpenAI.
+    raw_blocks: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def wants_tools(self) -> bool:
@@ -108,18 +129,25 @@ class Providers:
             "max_tokens": max_tokens,
             "system": system,
             "messages": messages,
-            "thinking": {"type": "adaptive"},
         }
+        if _supports_adaptive_thinking(model):
+            kwargs["thinking"] = {"type": "adaptive"}
         if tools:
-            kwargs["tools"] = tools
+            kwargs["tools"] = [{**t, "name": _wire_name(t["name"])} for t in tools]
         resp = self.anthropic.messages.create(**kwargs)
         text_parts: list[str] = []
         calls: list[ToolCall] = []
+        raw_blocks: list[dict[str, Any]] = []
         for block in resp.content:
+            raw = block.model_dump(exclude_none=True)
+            if raw.get("type") == "tool_use":
+                raw["name"] = _wire_name(raw["name"])  # keep the echoed block API-valid
+            raw_blocks.append(raw)
             if block.type == "text":
                 text_parts.append(block.text)
             elif block.type == "tool_use":
-                calls.append(ToolCall(id=block.id, name=block.name, arguments=dict(block.input)))
+                calls.append(ToolCall(id=block.id, name=_local_name(block.name),
+                                      arguments=dict(block.input)))
         return ModelReply(
             text="".join(text_parts).strip(),
             tool_calls=calls,
@@ -127,6 +155,7 @@ class Providers:
             model=model,
             input_tokens=getattr(resp.usage, "input_tokens", 0),
             output_tokens=getattr(resp.usage, "output_tokens", 0),
+            raw_blocks=raw_blocks,
         )
 
     # --- OpenAI -------------------------------------------------------------------
@@ -136,7 +165,7 @@ class Providers:
         if tools:
             kwargs["tools"] = [
                 {"type": "function", "function": {
-                    "name": t["name"], "description": t["description"],
+                    "name": _wire_name(t["name"]), "description": t["description"],
                     "parameters": t["input_schema"],
                 }}
                 for t in tools
@@ -149,7 +178,7 @@ class Providers:
         for tc in choice.message.tool_calls or []:
             import json
 
-            calls.append(ToolCall(id=tc.id, name=tc.function.name,
+            calls.append(ToolCall(id=tc.id, name=_local_name(tc.function.name),
                                   arguments=json.loads(tc.function.arguments or "{}")))
         return ModelReply(
             text=(choice.message.content or "").strip(),
