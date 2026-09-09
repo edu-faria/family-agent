@@ -1,0 +1,46 @@
+[project]
+name = "family-agent"
+version = "0.1.0"
+description = "Chat-first family plan manager: a Telegram bot + LLM agent for calendar and shopping, self-hosted on a home Docker host."
+requires-python = ">=3.12"
+dependencies = [
+    "python-telegram-bot>=21.6,<22",
+    "anthropic>=0.40",
+    "openai>=1.54,<2",
+    "pydantic>=2.9,<3",
+    "APScheduler>=3.10,<4",
+    "structlog>=24.4",
+    "python-dateutil>=2.9,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+    "mypy>=1.13",
+]
+
+[project.scripts]
+family-agent = "family_agent.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/family_agent"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true

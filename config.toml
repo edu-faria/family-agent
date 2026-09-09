@@ -1,0 +1,34 @@
+# Non-secret configuration. Secrets come from the environment / .env (see .env.example).
+# Anything here can be overridden by an env var: FAMILY_AGENT_<UPPER_DOTTED_PATH>,
+# e.g. FAMILY_AGENT_AGENT__PRIMARY_MODEL=claude-sonnet-5
+
+timezone = "Europe/Berlin"
+default_locale = "pt"            # replies default to Portuguese; German words are kept verbatim
+
+# Domains loaded at startup. Add a folder under src/family_agent/capabilities/
+# and list its name here. Nothing else in the core changes.
+enabled_capabilities = ["calendar", "shopping"]
+
+[agent]
+# The executor runs the tool-calling loop. Opus is the default; switch to
+# "claude-sonnet-5" to cut cost substantially at some loss of reasoning depth.
+primary_model   = "claude-opus-5"      # Anthropic
+fallback_model  = "gpt-4o"             # OpenAI — used when the primary provider errors/times out
+router_model    = "claude-haiku-4-5"   # cheap: scope check + capability routing + param extraction
+max_tool_calls_per_turn = 6
+turn_timeout_seconds    = 60
+max_output_tokens       = 1200
+history_turns           = 15           # rolling window kept per chat
+
+[calendar]
+travel_buffer_minutes = 15             # padding on each side when checking car / back-to-back conflicts
+
+[limits]
+per_member_daily_messages = 100
+global_daily_messages     = 400
+per_member_monthly_usd    = 15.0
+global_monthly_usd        = 40.0
+max_inbound_chars         = 2000
+
+[backup]
+keep_days = 14
